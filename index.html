@@ -41,10 +41,10 @@ footer{text-align:center;color:#718087;padding:28px}
 <div class="login">
 <h3>دخول الطالب</h3>
 <label>رقم سجل الطالب</label>
-<input id="name" inputmode="numeric" placeholder="اكتب رقم سجل الطالب">
+<input id="studentCode" inputmode="numeric" autocomplete="username" placeholder="اكتب رقم سجل الطالب">
 <label>كلمة المرور</label>
-<input id="code" type="password" inputmode="numeric" placeholder="آخر 4 أرقام من السجل">
-<button onclick="login()">دخول إلى المنصة</button><p style="font-size:13px;color:#718087;margin-top:12px">كلمة المرور هي آخر 4 أرقام من رقم السجل.</p>
+<input id="studentPassword" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="آخر 4 أرقام من السجل">
+<button type="button" onclick="login()">دخول إلى المنصة</button><p style="font-size:13px;color:#718087;margin-top:12px">كلمة المرور هي آخر 4 أرقام من رقم السجل.</p>
 <div id="msg"></div><button onclick="teacherLogin()" style="margin-top:10px;background:#475569">👨‍🏫 دخول المعلم وليد سليمان</button>
 </div>
 </section>
@@ -176,15 +176,35 @@ const students = [
 
 function getResults(){return JSON.parse(localStorage.getItem('alMorabiResults')||'[]');}
 function saveResult(student,score){const all=getResults();all.push({name:student.name,code:student.code,grade:student.grade,score:score,total:30,date:new Date().toLocaleString('ar-SA')});localStorage.setItem('alMorabiResults',JSON.stringify(all));}
-function login(){
- const n=document.getElementById('name').value.trim(); const c=document.getElementById('code').value.trim(); const m=document.getElementById('msg');
- const student=students.find(s=>s.code===n && s.password===c);
- if(!student){m.textContent='بيانات الدخول غير صحيحة.';return;}
- window.currentStudent=student;
- document.querySelector('.hero').style.display='none';document.getElementById('student').style.display='block';
- document.getElementById('studentName').textContent=student.name;document.getElementById('studentGrade').textContent=student.grade;
- const mine=getResults().filter(r=>r.code===student.code);document.getElementById('studentPoints').textContent=mine.reduce((a,r)=>a+r.score,0);window.scrollTo(0,0);
+function normalizeDigits(value){
+ return String(value||'')
+   .replace(/[٠-٩]/g, d => String(d.charCodeAt(0)-0x660))
+   .replace(/[۰-۹]/g, d => String(d.charCodeAt(0)-0x6F0))
+   .replace(/\\s+/g,'')
+   .replace(/[-–—]/g,'');
 }
+function login(){
+ const n=normalizeDigits(document.getElementById('studentCode').value);
+ const c=normalizeDigits(document.getElementById('studentPassword').value);
+ const m=document.getElementById('msg');
+ m.textContent='';
+ if(!n){m.textContent='اكتب رقم سجل الطالب أولًا.';return;}
+ if(!/^\\d+$/.test(n)){m.textContent='رقم السجل يجب أن يحتوي على أرقام فقط.';return;}
+ if(c.length!==4){m.textContent='كلمة المرور يجب أن تكون آخر 4 أرقام من رقم السجل.';return;}
+ const student=students.find(s=>normalizeDigits(s.code)===n && c===normalizeDigits(s.code).slice(-4));
+ if(!student){m.textContent='بيانات الدخول غير صحيحة. تأكد من رقم السجل وآخر 4 أرقام منه.';return;}
+ window.currentStudent=student;
+ document.querySelector('.hero').style.display='none';
+ document.getElementById('student').style.display='block';
+ document.getElementById('studentName').textContent=student.name;
+ document.getElementById('studentGrade').textContent=student.grade;
+ const mine=getResults().filter(r=>r.code===student.code);
+ document.getElementById('studentPoints').textContent=mine.reduce((a,r)=>a+r.score,0);
+ window.scrollTo(0,0);
+}
+document.getElementById('studentCode').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+document.getElementById('studentPassword').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+
 function showMyResults(){if(!window.currentStudent)return;document.getElementById('myResults').style.display='block';const mine=getResults().filter(r=>r.code===window.currentStudent.code);document.getElementById('resultsBox').innerHTML=mine.length?mine.slice().reverse().map((r,i)=>`<div class="question" style="margin:10px 0"><b>المحاولة ${mine.length-i}</b><br>النتيجة: <strong>${r.score} / ${r.total}</strong><br><span class="small">${r.date}</span></div>`).join(''):'<div class="question">لا توجد نتائج بعد. العب لعبة لغتي أولاً 🎮</div>';document.getElementById('myResults').scrollIntoView({behavior:'smooth'});}
 function closeMyResults(){document.getElementById('myResults').style.display='none';document.getElementById('student').scrollIntoView({behavior:'smooth'});}
 function teacherLogin(){const code=prompt('أدخل رمز المعلم التجريبي:');if(code==='9999'){showTeacher();}else if(code!==null){alert('رمز المعلم غير صحيح.');}}
@@ -259,7 +279,7 @@ function nextLessonQuestion(){if(lessonQ<9){lessonQ++;renderLessonQuestion();}el
 function finishLesson(){const names={word:'أنواع الكلمة والجملة',nominal:'المبتدأ والخبر',genitive:'الاسم المجرور بحرف الجر',verb:'أنواع الفعل',roles:'الفاعل والمفعول به',hamza:'همزتا القطع والوصل',finalhamza:'الهمزة المتطرفة',taa:'التاء المربوطة والتاء المفتوحة'};if(window.currentStudent){const arr=JSON.parse(localStorage.getItem('alMorabiResults')||'[]');arr.push({name:window.currentStudent.name,code:window.currentStudent.code,grade:window.currentStudent.grade,type:'اختبار درس',lesson:names[currentLesson],score:lessonScore,total:10,date:new Date().toLocaleString('ar-SA')});localStorage.setItem('alMorabiResults',JSON.stringify(arr));}document.getElementById('lessonQuiz').innerHTML='<div class="lesson-rule" style="text-align:center"><h2>🎉 انتهى الاختبار</h2><div style="font-size:38px;font-weight:800">'+lessonScore+' / 10</div><p>'+ (lessonScore>=9?'ممتاز جدًا ⭐⭐⭐':lessonScore>=7?'أحسنت! ⭐⭐':'استمر في التدريب ⭐') +'</p><p>تم حفظ النتيجة في «نتائجي»'+(window.currentStudent?'':' عند تسجيل الدخول كطالب')+'.</p></div>';document.getElementById('lessonFeedback').textContent='';document.getElementById('lessonNext').style.display='none';}
 
 // Gemini: keep the API key on a server/Cloudflare Worker, never inside this public GitHub Pages file.
-const GEMINI_API_URL = https://al-morabi-gemini.waledkombar88.workers.dev;
+const GEMINI_API_URL = 'PUT_YOUR_GEMINI_WORKER_URL_HERE';
 function openGeminiTutor(){document.getElementById('geminiTutor').style.display='block';document.getElementById('geminiTutor').scrollIntoView({behavior:'smooth'});document.getElementById('geminiQuestion').focus();}
 function closeGeminiTutor(){document.getElementById('geminiTutor').style.display='none';}
 async function askGemini(){
