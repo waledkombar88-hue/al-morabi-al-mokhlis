@@ -1,0 +1,11 @@
+ربط المربي المخلص بـ Gemini
+
+1) انشر gemini-worker.js كـ Cloudflare Worker.
+2) أضف Secret باسم GEMINI_API_KEY وضع فيه مفتاح Gemini.
+3) انسخ رابط الـ Worker.
+4) افتح index.html وابحث عن:
+   PUT_YOUR_GEMINI_WORKER_URL_HERE
+   واستبدله برابط Worker.
+5) ارفع index.html المحدث إلى GitHub Pages.
+
+مهم: لا تضع مفتاح Gemini داخل index.html أو GitHub العام.

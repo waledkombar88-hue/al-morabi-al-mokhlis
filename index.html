@@ -72,6 +72,7 @@ footer{text-align:center;color:#718087;padding:28px}
 <div class="card" onclick="startWheel()" style="cursor:pointer"><div class="icon">🎡</div><h3>عجلة التحدي</h3><p>سؤال عشوائي ومفاجأة</p></div>
 <div class="card" onclick="startTrueFalse()" style="cursor:pointer"><div class="icon">✅</div><h3>صح أم خطأ</h3><p>اختبر معلوماتك بسرعة</p></div>
 <div class="card" onclick="startMemory()" style="cursor:pointer"><div class="icon">🧠</div><h3>ذاكرة الكلمات</h3><p>تذكر الكلمات وطابقها</p></div>
+<div class="card" onclick="openGeminiTutor()" style="cursor:pointer"><div class="icon">🤖</div><h3>المربي الذكي Gemini</h3><p>اسأل عن الدرس واحصل على شرح مبسط</p></div>
 </div>
 <div style="max-width:430px;margin:24px auto 0">
 <button onclick="showMyResults()" style="margin-bottom:10px">🏆 عرض نتائجي</button><button onclick="location.reload()">تسجيل خروج</button>
@@ -129,6 +130,18 @@ footer{text-align:center;color:#718087;padding:28px}
   <div id="competitionBox"></div>
 </section>
 
+
+<section id="geminiTutor" class="game" style="display:none;margin-top:24px">
+<h2>🤖 المربي الذكي — Gemini</h2>
+<p style="text-align:center">اسأل عن درس من لغتي، وسأشرح لك بطريقة مناسبة للصف الرابع.</p>
+<div class="question">
+<textarea id="geminiQuestion" rows="4" style="width:100%;padding:12px;border:2px solid #dce8eb;border-radius:12px;font-family:inherit" placeholder="مثال: ما الفرق بين المبتدأ والخبر؟"></textarea>
+<button onclick="askGemini()" style="margin-top:10px">اسأل المربي الذكي 🤖</button>
+<div id="geminiStatus" class="feedback"></div>
+<div id="geminiAnswer" class="lesson-rule" style="display:none;white-space:pre-wrap;margin-top:14px"></div>
+<button onclick="closeGeminiTutor()" style="margin-top:10px;background:#475569">رجوع</button>
+</div>
+</section>
 
 <section id="myResults" class="game" style="display:none;margin-top:24px">
 <h2>🏆 نتائجي</h2><div id="resultsBox"></div><button onclick="closeMyResults()">رجوع للوحة الطالب</button>
@@ -208,11 +221,11 @@ let buttons=shuffled.map((x,i)=>`<button class="answer" onclick="pickWord(this, 
 showMini('🧩 رتّب الكلمات','<p>اضغط الكلمات بالترتيب لتكوين جملة صحيحة:</p><div id="wo" class="answers">'+buttons+'</div><p id="woOut" class="feedback"></p>');
 window.woTarget=q;window.woPicked=[];
 }
-function pickWord(btn,w){if(btn.disabled)return;btn.disabled=true;window.woPicked.push(w);document.getElementById('woOut').textContent=window.woPicked.join(' ');if(window.woPicked.length===window.woTarget.length){document.getElementById('woOut').textContent=window.woPicked.join(' ')+(window.woPicked.join(' ')===window.woTarget.join(' ')?' ✅ أحسنت!':' ❌ حاول مرة أخرى');if(window.woPicked.join(' ')===window.woTarget.join(' ')&&window.currentStudent)saveResult(window.currentStudent,2);}}
+function pickWord(btn,w){if(btn.disabled)return;btn.disabled=true;window.woPicked.push(w);document.getElementById('woOut').textContent=window.woPicked.join(' ');if(window.woPicked.length===window.woTarget.length){const ok=window.woPicked.join(' ')===window.woTarget.join(' ');document.getElementById('woOut').innerHTML=window.woPicked.join(' ')+(ok?' ✅ أحسنت!':' ❌ ترتيب غير صحيح')+'<br><button onclick="startWordOrder()">🔄 محاولة جديدة</button>';if(ok&&window.currentStudent)saveResult(window.currentStudent,2);}}
 function startWheel(){let items=['🧠 سؤال نحوي','✏️ سؤال إملائي','📚 سؤال لغتي','🌱 سؤال عن الصحة والبيئة','⚡ سؤال سرعة'];showMini('🎡 عجلة التحدي','<div style="text-align:center;font-size:44px">🎡</div><h3 style="text-align:center" id="wheelText">اضغط لتدوير العجلة</h3><button onclick="spinWheel()">لف العجلة 🔄</button>');window.wheelItems=items;}
 function spinWheel(){let x=window.wheelItems[Math.floor(Math.random()*window.wheelItems.length)];document.getElementById('wheelText').textContent='🎉 '+x;}
-function startTrueFalse(){let qs=[['الجملة الاسمية تبدأ غالبًا باسم.',true],['الفعل «كتبَ» فعل مضارع.',false],['الاسم بعد حرف الجر يكون مجرورًا.',true],['«اكتبْ» فعل أمر.',true],['المبتدأ يأتي في الجملة الاسمية غالبًا.',true]];let q=qs[Math.floor(Math.random()*qs.length)];showMini('✅ صح أم خطأ','<h3>'+q[0]+'</h3><div class="answers"><button class="answer" onclick="tf(true)">صح</button><button class="answer" onclick="tf(false)">خطأ</button></div><p id="tfOut" class="feedback"></p>');window.tfAnswer=q[1];}
-function tf(v){let ok=v===window.tfAnswer;document.getElementById('tfOut').textContent=ok?'✅ إجابة صحيحة!':'❌ إجابة غير صحيحة';if(ok&&window.currentStudent)saveResult(window.currentStudent,2);}
+function startTrueFalse(){window.tfDone=false;let qs=[['الجملة الاسمية تبدأ غالبًا باسم.',true],['الفعل «كتبَ» فعل مضارع.',false],['الاسم بعد حرف الجر يكون مجرورًا.',true],['«اكتبْ» فعل أمر.',true],['المبتدأ يأتي في الجملة الاسمية غالبًا.',true]];let q=qs[Math.floor(Math.random()*qs.length)];showMini('✅ صح أم خطأ','<h3>'+q[0]+'</h3><div class="answers"><button class="answer" onclick="tf(true)">صح</button><button class="answer" onclick="tf(false)">خطأ</button></div><p id="tfOut" class="feedback"></p>');window.tfAnswer=q[1];}
+function tf(v){if(window.tfDone)return;window.tfDone=true;let ok=v===window.tfAnswer;document.getElementById('tfOut').textContent=ok?'✅ إجابة صحيحة!':'❌ إجابة غير صحيحة';document.querySelectorAll('#miniBox .answer').forEach(b=>b.disabled=true);if(ok&&window.currentStudent)saveResult(window.currentStudent,2);}
 function startMemory(){let words=['صحة','بيئة','نظافة','ماء'];let a=[...words].sort(()=>Math.random()-.5);showMini('🧠 ذاكرة الكلمات','<p>احفظ الكلمات خلال 4 ثوانٍ ثم اكتبها مفصولة بفواصل:</p><h3 id="memWords" style="text-align:center">'+a.join(' — ')+'</h3><input id="memInput" placeholder="اكتب الكلمات هنا"><button onclick="checkMemory()">تحقق 🎯</button><p id="memOut" class="feedback"></p>');window.memWords=a;setTimeout(()=>document.getElementById('memWords').textContent='❓ اختفت الكلمات!',4000);}
 function checkMemory(){let v=document.getElementById('memInput').value.split(',').map(x=>x.trim()).filter(Boolean);let ok=v.join('|')===window.memWords.join('|');document.getElementById('memOut').textContent=ok?'🏆 ممتاز! ذاكرتك قوية.':'❌ حاول مرة أخرى';if(ok&&window.currentStudent)saveResult(window.currentStudent,3);}
 
@@ -244,6 +257,24 @@ function renderLessonQuestion(){const l=lessons[currentLesson],q=l.qs[lessonQ];l
 function answerLesson(i){if(lessonAnswered)return;lessonAnswered=true;const q=lessons[currentLesson].qs[lessonQ];const buttons=[...document.querySelectorAll('#lessonQuiz button')];buttons.forEach(b=>b.disabled=true);if(i===q[2]){lessonScore++;buttons[i].classList.add('correct');document.getElementById('lessonFeedback').textContent='✅ إجابة صحيحة! +⭐';}else{buttons[i].classList.add('wrong');buttons[q[2]].classList.add('correct');document.getElementById('lessonFeedback').textContent='❌ ليست صحيحة. الإجابة الصحيحة: '+q[1][q[2]];}document.getElementById('lessonNext').style.display='block';document.getElementById('lessonNext').textContent=lessonQ===9?'إنهاء الاختبار':'السؤال التالي ➜';}
 function nextLessonQuestion(){if(lessonQ<9){lessonQ++;renderLessonQuestion();}else{finishLesson();}}
 function finishLesson(){const names={word:'أنواع الكلمة والجملة',nominal:'المبتدأ والخبر',genitive:'الاسم المجرور بحرف الجر',verb:'أنواع الفعل',roles:'الفاعل والمفعول به',hamza:'همزتا القطع والوصل',finalhamza:'الهمزة المتطرفة',taa:'التاء المربوطة والتاء المفتوحة'};if(window.currentStudent){const arr=JSON.parse(localStorage.getItem('alMorabiResults')||'[]');arr.push({name:window.currentStudent.name,code:window.currentStudent.code,grade:window.currentStudent.grade,type:'اختبار درس',lesson:names[currentLesson],score:lessonScore,total:10,date:new Date().toLocaleString('ar-SA')});localStorage.setItem('alMorabiResults',JSON.stringify(arr));}document.getElementById('lessonQuiz').innerHTML='<div class="lesson-rule" style="text-align:center"><h2>🎉 انتهى الاختبار</h2><div style="font-size:38px;font-weight:800">'+lessonScore+' / 10</div><p>'+ (lessonScore>=9?'ممتاز جدًا ⭐⭐⭐':lessonScore>=7?'أحسنت! ⭐⭐':'استمر في التدريب ⭐') +'</p><p>تم حفظ النتيجة في «نتائجي»'+(window.currentStudent?'':' عند تسجيل الدخول كطالب')+'.</p></div>';document.getElementById('lessonFeedback').textContent='';document.getElementById('lessonNext').style.display='none';}
+
+// Gemini: keep the API key on a server/Cloudflare Worker, never inside this public GitHub Pages file.
+const GEMINI_API_URL = 'PUT_YOUR_GEMINI_WORKER_URL_HERE';
+function openGeminiTutor(){document.getElementById('geminiTutor').style.display='block';document.getElementById('geminiTutor').scrollIntoView({behavior:'smooth'});document.getElementById('geminiQuestion').focus();}
+function closeGeminiTutor(){document.getElementById('geminiTutor').style.display='none';}
+async function askGemini(){
+ const q=document.getElementById('geminiQuestion').value.trim();
+ const status=document.getElementById('geminiStatus'), ans=document.getElementById('geminiAnswer');
+ if(!q){status.textContent='اكتب سؤالك أولًا ✍️';return;}
+ if(GEMINI_API_URL.includes('PUT_YOUR')){status.textContent='لم يتم ربط خادم Gemini بعد. نربطه في الخطوة التالية.';return;}
+ status.textContent='⏳ المربي الذكي يفكر...';ans.style.display='none';
+ try{
+   const r=await fetch(GEMINI_API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,student:window.currentStudent?window.currentStudent.name:''})});
+   const data=await r.json();
+   if(!r.ok) throw new Error(data.error||'تعذر الاتصال');
+   ans.textContent=data.answer||'لم تصل إجابة.';ans.style.display='block';status.textContent='✅';
+ }catch(e){status.textContent='❌ تعذر الاتصال بالمربي الذكي. تأكد من إعداد خادم Gemini.';console.error(e);}
+}
 
 function showMaterials(){const el=document.getElementById('materials');el.style.display='block';el.scrollIntoView({behavior:'smooth'});}
 function showMaterial(title,text){document.getElementById('materialTitle').textContent=title;document.getElementById('materialText').textContent=text;document.getElementById('materialView').style.display='block';document.getElementById('materialView').scrollIntoView({behavior:'smooth'});}
